@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name        OpenNet Mod Tools
 // @namespace   opennet-mod-tools
 // @description Extend interface functionality for OpenNet moderators
@@ -31,6 +31,9 @@
 // работает для ссылок типа 
 // https://www.opennet.ru/openforum/vsluhforumID3/109668.html
 
+// определение выходных узлов tor
+// https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=94.142.141.14&port=443
+
 function last (lst) {
   return lst[lst.length-1]
 }
@@ -59,8 +62,7 @@ var links = document.getElementsByTagName("a");
 for (i in links) {
   name = links[i].text;
   if (name in utags) {
-      links[i].parentElement.innerHTML = "<a href=\"" + links[i].href + "\">" + links[i].text + "</a> " +
-                                         "[" + utags[name].toString() + "]"
+//      links[i].parentElement.innerHTML = "<span class='user'> <a href=\"" + links[i].href + "\">" + links[i].text + "</a> " + "[" + utags[name].toString() + "] </div>"
    };
 };
 
@@ -156,3 +158,119 @@ for (var i=0; i<msgs.length; i++) {
   lookup.onclick = function () {lookup_msg_id(news_id, id)};
   lookup.text = "(((>o<)))";
 }
+
+/*
+if (window.localStorage) {
+    alert("localstorage exists");
+} else {
+    alert("noooooo!");
+}
+
+if (window.File && window.FileReader && window.FileList && window.Blob) {
+    alert('Great success! All the File APIs are supported.');
+} else {
+    alert('The File APIs are not fully supported in this browser.');
+}
+*/
+
+
+// ==== TOP MENU ====
+
+/*
+  Мы крутим страничку, а элементы управления модераторскими
+  инструментами всегда наверху экрана.
+*/
+var stalker = document.createElement("header");
+stalker.className = "stalker";
+stalker.id = "stalker";
+stalker.style.textAlign = "center";
+stalker.style.backgroundColor = "white";
+stalker.style.position = "fixed";
+stalker.style.top = "0px";
+stalker.style.left = "0px";
+stalker.style.width = "100%";
+stalker.style.padding = 0;
+stalker.style.border = 1;
+
+var menu = document.createElement("table");
+menu.align = "center";
+menu.width = "80%";
+menu.border = 1;
+menu.style.textAlign = "center";
+menu.style.tableLayout = "fixed";
+menu.insertRow();
+
+menu.rows[0].insertCell();
+menu.rows[0].cells[0].innerHTML = "<b>Peter Peter Pumpkin Eater!</b>";
+
+menu.rows[0].insertCell();
+menu.rows[0].cells[1].innerHTML = "<b>My name's Jobe</b>";
+
+stalker.appendChild(menu);
+document.body.appendChild(stalker);
+
+// space in the top is needed because top menu has fixed position
+let stalker_height = document.getElementById("stalker").offsetHeight;
+document.body.style.paddingTop = stalker_height;
+
+// jump higher than anchors when follow links  are because of top menu
+window.addEventListener("hashchange", function () {
+    window.scrollTo(window.scrollX, window.scrollY - stalker_height);
+});
+
+//jump higher than anchors if we load page on anchor
+window.onload = function() {
+    if (window.location.href.indexOf('#') > -1) {
+	window.scrollTo(window.scrollX, window.scrollY-1);
+    };
+}
+
+
+// NEW CLASSES, SPANS AND IDS
+
+/*
+  Приводим содержимое страницы в божеский вид, с которым хотя бы можно
+  работать. Потому что тут форматирование страницы ей-богу на уровне
+  конца девяностых.
+
+  Здесь все ссылки на пользователей заворачиваются в span с классом
+  user, создаются id некоторым важным объектам.
+*/
+
+// 8я таблица -- это Оглавление
+document.body.getElementsByTagName("table")[8].id = "table-of-contents";
+// Сообщения по теме - это таблицы в первом параграфе после Содержания
+document.getElementById("table-of-contents").nextSibling.id = "messages";
+
+// каждая 2я ссылка в table-of-contents -- на пользователя
+let lis = document.getElementById("table-of-contents").getElementsByTagName("li");
+for (let i=0; i<lis.length; i++) {
+    let user = lis[i].getElementsByTagName("a")[1];
+    user.outerHTML = "<span class='user'>" + user.outerHTML + "</span>";
+};
+
+// первые 2 таблицы - заполнитель и верхнее управление
+// последняя таблица - тоже управление
+var msgs = document.getElementById("messages").getElementsByTagName("table");
+for (let i=2; i<msgs.length-1; i++) {
+    msgs[i].className = "msg";
+    // отступы сообщений в тредах делаются добавлением строки одной ячейкой фиксированной ширины и rowspan=5
+    // короче, надо брать третью ячкейку С КОНЦА!
+    let row_index = msgs[i].tBodies[0].rows.length - 3; 
+    let user = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
+    user.outerHTML = "<span class='user'>" + user.outerHTML + "</span>";
+}
+
+
+
+
+
+// LOCAL STORAGE
+
+var db = localStorage;
+
+if (db.length == 0) {
+    db.setItem("usertags", null);
+}
+
+console.log("DONE");

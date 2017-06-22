@@ -280,14 +280,139 @@ for (let i=0; i<links.length; i++) {
 
 // === LOCAL STORAGE ===
 console.log("db");
-var db = document.openDatabase('opennet-mod-database', '1.0', 'Database for Moderator purposes', 50 * 1024 * 1024);
 
-/*
-var db = localStorage;
+/* msgs record:
+{ "news-id": 104047,
+  "msg-id": 73,
+  "user": "freehck",
+  "ipv4": "1.2.3.4"}
+*/
 
-if (db.length == 0) {
-    db.setItem("usertags", null);
+/* utags record:
+{ "user": "freehck",
+  "tag": "moderator" }
+*/
+
+
+// This works on all devices/browsers, and uses IndexedDBShim as a final fallback 
+var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
+
+if (!indexedDB) {
+    window.alert("Ваш браузер не поддерживает IndexedDB. Можете забыть об Opennet Mod Tools");
+};
+
+var database = indexedDB.open("opennet-db", 2);
+database.onupgradeneeded = function() {
+    var db = database.result;
+    var store;
+    console.log("createdb");
+/*    store = db.createObjectStore("msgs", {keyPath: ["news-id", "msg-id"]});
+    console.log("msgs middle");
+    store.createIndex("ipv4", "ipv4", {unique: false});
+    console.log("msgs done")*/
+    store = db.createObjectStore("utags");
+    store.createIndex("user", "user", {unique: false});
+    console.log("utags done")
+    
+};
+database.onerror = function (event) {
+    console.log("Database error: " + event.result.errorCode);
+};
+
+/*function msgStore(data) {
+    database.onsuccess = function() {
+	// Start a new transaction
+	var db = database.result;
+	var tx = db.transaction("msgs", "readwrite");
+	var store = tx.objectStore("msgs");
+	store.put(data);
+    };
+};
+
+function msgLookupId(news_id, msg_id) {
+    var db = database.result;
+    var tx = db.transaction("msgs", "readwrite");
+    var store = tx.objectStore("msgs");
+    return store.get({news_id, msg_id});
+}
+
+function msgLookupIpv4(ipv4) {
+    var db = database.result;
+    var tx = db.transaction("msgs", "readwrite");
+    var store = tx.objectStore("msgs");
+    var index = store.index("ipv4");
+    return index.get("ipv4",ipv4);
 }
 */
+
+function utagsStore(data) {
+    database.onsuccess = function() {
+	// Start a new transaction
+	console.log("1");
+	var db = database.result;
+	var tx = db.transaction("utags", "readwrite");
+	var store = tx.objectStore("utags");
+	console.log("try to put: "+JSON.stringify(data));
+	var request = store.put(data);
+	request.onsuccess = function(e) {
+	    console.log("stored");
+	};
+	request.onerror = function(e) {
+	    console.log("ERROR, not stored");
+	};
+	
+    };
+}
+
+function utagsLookupUser(user) {
+    let result;
+    database.onsuccess = function() {
+	var db = database.result;
+	var tx = db.transaction("utags", "readwrite");
+	var store = tx.objectStore("utags");
+	var index = store.index("user");
+	var getUser = index.get("user",user);
+	getUser.onsuccess = function() {
+	    console.log("result: "+getUser.result);
+	    result = getUser.result;
+	};
+    };
+    return result
+}
+
+
+utagsStore({ user: "freehck", tag: "moderator" });
+//utagsLookupUser("freehck");
+  
+/*
+    // Add some data
+    store.put({id: 12345, name: {first: "John", last: "Doe"}, age: 42});
+    store.put({id: 67890, name: {first: "Bob", last: "Smith"}, age: 35});
+    
+    // Query the data
+    var getJohn = store.get(12345);
+    var getBob = index.get(["Smith", "Bob"]);
+
+    getJohn.onsuccess = function() {
+        console.log(getJohn.result.name.first);  // => "John"
+    };
+
+    getBob.onsuccess = function() {
+        console.log(getBob.result.name.first);   // => "Bob"
+    };
+
+    // Close the db when the transaction is done
+    tx.oncomplete = function() {
+        db.close();
+    };
+}
+*/
+
+
+
+
+
+
+
 
 console.log("DONE");

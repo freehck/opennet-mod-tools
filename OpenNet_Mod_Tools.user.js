@@ -226,7 +226,7 @@ window.onload = function() {
 }
 
 
-// NEW CLASSES, SPANS AND IDS
+// === NEW CLASSES, SPANS AND IDS ===
 
 /*
   Приводим содержимое страницы в божеский вид, с которым хотя бы можно
@@ -236,6 +236,8 @@ window.onload = function() {
   Здесь все ссылки на пользователей заворачиваются в span с классом
   user, создаются id некоторым важным объектам.
 */
+
+
 
 // 8я таблица -- это Оглавление
 document.body.getElementsByTagName("table")[8].id = "table-of-contents";
@@ -261,16 +263,31 @@ for (let i=2; i<msgs.length-1; i++) {
     user.outerHTML = "<span class='user'>" + user.outerHTML + "</span>";
 }
 
+// === Decorations ===
+
+/* всегда хотел заменить ссылку [Сообщить модератору] на [Удалить] */
+
+var links = document.getElementsByTagName("a");
+for (let i=0; i<links.length; i++) {
+    // буква С - английская!
+    if (links[i].innerHTML == "Cообщить модератору") {
+	links[i].innerHTML = "<b>Удалить</b>";
+    }
+};
+   
 
 
 
+// === LOCAL STORAGE ===
+console.log("db");
+var db = document.openDatabase('opennet-mod-database', '1.0', 'Database for Moderator purposes', 50 * 1024 * 1024);
 
-// LOCAL STORAGE
-
+/*
 var db = localStorage;
 
 if (db.length == 0) {
     db.setItem("usertags", null);
 }
+*/
 
 console.log("DONE");

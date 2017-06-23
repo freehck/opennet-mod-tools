@@ -228,11 +228,13 @@ for (let i=2; i<msgs.length-1; i++) {
     msgs[i].className = "msg";
     // отступы сообщений в тредах делаются добавлением строки одной ячейкой фиксированной ширины и rowspan=5
     // короче, надо брать третью строку С КОНЦА!
-    let row_index = msgs[i].tBodies[0].rows.length - 3; 
-    let userNode = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
-    let userName = userNode.innerHTML;
-    let msgId = msgs[i].tBodies[0].rows[row_index-1].cells[0].getElementsByTagName("a")[0].getAttribute("name");
-    userNode.parentNode.outerHTML = makeUserNode(userName, msgId)
+    let tableRowsNum = msgs[i].tBodies[0].rows.length;
+    if (tableRowsNum == 4 || tableRowsNum == 5) {
+	let userNode = msgs[i].tBodies[0].rows[tableRowsNum-3].cells[0].getElementsByTagName("a")[0];
+	let userName = userNode.innerHTML;
+	let msgId = msgs[i].tBodies[0].rows[tableRowsNum-4].cells[0].getElementsByTagName("a")[0].getAttribute("name");
+	userNode.parentNode.outerHTML = makeUserNode(userName, msgId);
+    };
 }
 
 /* всегда хотел заменить ссылку [Сообщить модератору] на [Удалить] */

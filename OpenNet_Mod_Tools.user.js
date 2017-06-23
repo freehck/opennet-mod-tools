@@ -218,12 +218,7 @@ window.addEventListener("hashchange", function () {
     window.scrollTo(window.scrollX, window.scrollY - stalker_height);
 });
 
-//jump higher than anchors if we load page on anchor
-window.onload = function() {
-    if (window.location.href.indexOf('#') > -1) {
-	window.scrollTo(window.scrollX, window.scrollY-1);
-    };
-}
+
 
 
 // === NEW CLASSES, SPANS AND IDS ===
@@ -238,17 +233,35 @@ window.onload = function() {
 */
 
 
-
 // 8я таблица -- это Оглавление
 document.body.getElementsByTagName("table")[8].id = "table-of-contents";
 // Сообщения по теме - это таблицы в первом параграфе после Содержания
 document.getElementById("table-of-contents").nextSibling.id = "messages";
 
+
+function getUserName(node) {
+    return node.getElementsByTagName("a")[0].innerHTML
+}
+
+function makeUserNode(name) {
+    //console.log("Name:"+name);
+    let r = 
+        "<span class='user'>"
+	  + "<b><a href='/~"+name+"'>"+name+"</a></b> "
+	  + "<b><span class='tags'></span></b> &nbsp; "
+	  + "<span class='actions'>"
+            + "<a onclick=\"utagsStore({ user: '"+name+"', tag: 'moderator' })\">[add tag]</a> "
+            + "<a onclick=\"utagsGet('"+name+"')\">[get tag]</a> "
+          +"</span>'"
+	+ "</span>";
+    return r;
+}
+
 // каждая 2я ссылка в table-of-contents -- на пользователя
 let lis = document.getElementById("table-of-contents").getElementsByTagName("li");
 for (let i=0; i<lis.length; i++) {
     let user = lis[i].getElementsByTagName("a")[1];
-    user.outerHTML = "<span class='user'>" + user.outerHTML + "</span>";
+    user.parentNode.outerHTML = makeUserNode(user.innerHTML)
 };
 
 // первые 2 таблицы - заполнитель и верхнее управление
@@ -260,10 +273,12 @@ for (let i=2; i<msgs.length-1; i++) {
     // короче, надо брать третью ячкейку С КОНЦА!
     let row_index = msgs[i].tBodies[0].rows.length - 3; 
     let user = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
-    user.outerHTML = "<span class='user'>" + user.outerHTML + "</span>";
+    user.parentNode.outerHTML = makeUserNode(user.innerHTML)
 }
 
 // === Decorations ===
+
+
 
 /* всегда хотел заменить ссылку [Сообщить модератору] на [Удалить] */
 
@@ -301,22 +316,68 @@ if (!indexedDB) {
     window.alert("Ваш браузер не поддерживает IndexedDB. Можете забыть об Opennet Mod Tools");
 };
 
-var database = indexedDB.open("opennet-db", 2);
-database.onupgradeneeded = function() {
-    var db = database.result;
-    var store;
-    console.log("createdb");
-/*    store = db.createObjectStore("msgs", {keyPath: ["news-id", "msg-id"]});
-    console.log("msgs middle");
-    store.createIndex("ipv4", "ipv4", {unique: false});
-    console.log("msgs done")*/
-    store = db.createObjectStore("utags");
-    store.createIndex("user", "user", {unique: false});
-    console.log("utags done")
-    
+var db;
+
+function displayUserTags() {
+    console.log("display user tags");
+    let users = document.body.getElementsByClassName("user");
+    for (let i=0; i<users.length; i++) {
+	let userNode = users[i];
+	let name = getUserName(userNode);
+	let tagsNode = users[i].getElementsByClassName("tags")[0];
+	tagsNode.innerHTML = " ["
+	let firstTag = true;
+	let objectStore = db.transaction("utags", "readwrite").objectStore("utags");
+	objectStore.openCursor().onsuccess = function(event) {
+	    let cursor = event.target.result;
+	    if (cursor && cursor.value.user == name) {
+		let tag = cursor.value.tag;
+		if(!firstTag) {
+		    tagsNode.innerHTML += ","+tag
+		} else {
+		    tagsNode.innerHTML += tag;
+		    firstTag=false
+		};
+		cursor.continue();
+	    } else {
+		tagsNode.innerHTML += "]"
+	    };
+	};
+    };
 };
-database.onerror = function (event) {
-    console.log("Database error: " + event.result.errorCode);
+
+
+//indexedDB.deleteDatabase("opennet-db");
+
+window.onload = function() {
+    //jump higher than anchors if we load page on anchor
+    if (window.location.href.indexOf('#') > -1) {
+	window.scrollTo(window.scrollX, window.scrollY-1);
+    };
+
+    // database
+    var DBOpenRequest = indexedDB.open("opennet-db3", 1);
+    DBOpenRequest.onsuccess = function(e) {
+	db = DBOpenRequest.result;
+	console.log("database has been opened");
+	displayUserTags();
+    };
+
+    DBOpenRequest.onupgradeneeded = function(event) {
+	db = event.target.result;
+	/*store = db.createObjectStore("msgs", {keyPath: ["news-id", "msg-id"]});
+	console.log("msgs middle");
+	store.createIndex("ipv4", "ipv4", {unique: false});
+	console.log("msgs done")*/
+	var store = db.createObjectStore("utags", {autoIncrement: true});
+	store.createIndex("user", "user", {unique: false});
+	store.createIndex("tag", "tag", {unique: false});
+	console.log("utags store created")
+    }
+
+    DBOpenRequest.onerror = function (event) {
+	console.log("Database error: " + event.result.errorCode);
+    };
 };
 
 /*function msgStore(data) {
@@ -345,25 +406,55 @@ function msgLookupIpv4(ipv4) {
 }
 */
 
+
+
 function utagsStore(data) {
-    database.onsuccess = function() {
+//    database.onsuccess = function() {
 	// Start a new transaction
-	console.log("1");
-	var db = database.result;
-	var tx = db.transaction("utags", "readwrite");
-	var store = tx.objectStore("utags");
+    //console.log("database: "+JSON.stringify(database));
+//	var db = database.result;
+    console.log("start tx");
+    var objectStore = db.transaction("utags", "readwrite").objectStore("utags");
 	console.log("try to put: "+JSON.stringify(data));
-	var request = store.put(data);
-	request.onsuccess = function(e) {
-	    console.log("stored");
-	};
-	request.onerror = function(e) {
-	    console.log("ERROR, not stored");
-	};
-	
-    };
+    var request = objectStore.put(data);
+    request.onsuccess = function() {
+	console.log("stored");
+    }
+//    };
+};
+unsafeWindow.utagsStore = function(data) { utagsStore(data) };
+
+// ненужная функция - только для дебага
+function utagsGet(name) {
+    let objectStore = db.transaction("utags", "readwrite").objectStore("utags");
+    objectStore.openCursor().onsuccess = function(event) {
+	let cursor = event.target.result;
+	if (cursor) {
+	    let tag = cursor.value.tag;
+	    console.log("tag: "+tag);
+	} else {
+	    console.log("no tag!");
+	}
+    }
 }
 
+
+
+
+
+
+
+
+unsafeWindow.utagsGet = function(name) {
+    var r = utagsGet(name);
+/*    console.log(r.join(','));
+    console.log(r[0]);
+    console.log(r.length);
+    console.log("GET: "+r.join(','));*/
+    return r
+}
+
+/*
 function utagsLookupUser(user) {
     let result;
     database.onsuccess = function() {
@@ -379,9 +470,12 @@ function utagsLookupUser(user) {
     };
     return result
 }
+*/
 
+//utagsStore({ user: "freehck", tag: "moderator" });
+//utagsStore({ user: "Michael Shigorin", tag: "moderator" });
+ 
 
-utagsStore({ user: "freehck", tag: "moderator" });
 //utagsLookupUser("freehck");
   
 /*
@@ -414,5 +508,5 @@ utagsStore({ user: "freehck", tag: "moderator" });
 
 
 
-
 console.log("DONE");
+

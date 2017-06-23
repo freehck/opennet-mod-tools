@@ -34,6 +34,8 @@
 // определение выходных узлов tor
 // https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=94.142.141.14&port=443
 
+console.log("load OpenNet Mod Tools");
+
 function last (lst) {
   return lst[lst.length-1]
 }
@@ -243,18 +245,24 @@ function getUserName(node) {
     return node.getElementsByTagName("a")[0].innerHTML
 }
 
-function makeUserNode(name) {
+function makeUserNode(username) {
     //console.log("Name:"+name);
     let r = 
         "<span class='user'>"
-	  + "<b><a href='/~"+name+"'>"+name+"</a></b> "
-	  + "<b><span class='tags'></span></b> &nbsp; "
+	  + "<b><a href='/~"+username+"'>"+username+"</a></b> "
+	  + "<b><span class='tagsLeft'></span><span class='tags'></span><span class='tagsRight'></span></b> "
 	  + "<span class='actions'>"
-            + "<a onclick=\"utagsStore({ user: '"+name+"', tag: 'moderator' })\">[add tag]</a> "
-            + "<a onclick=\"utagsGet('"+name+"')\">[get tag]</a> "
-          +"</span>'"
+          + " -- "
+            + "<a onclick=\"utagsStorePrompt('"+username+"')\">[add tag]</a> "
+          + " -- "
+          +"</span>"
 	+ "</span>";
     return r;
+}
+
+function makeUserTagNode(userName,tagName) {
+    let r = tagName + "<a onclick=\"utagsDelete('"+userName+"','"+tagName+"')\">(x)</a>";
+    return r
 }
 
 // каждая 2я ссылка в table-of-contents -- на пользователя
@@ -275,6 +283,8 @@ for (let i=2; i<msgs.length-1; i++) {
     let user = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
     user.parentNode.outerHTML = makeUserNode(user.innerHTML)
 }
+
+
 
 // === Decorations ===
 
@@ -324,27 +334,32 @@ function displayUserTags() {
     for (let i=0; i<users.length; i++) {
 	let userNode = users[i];
 	let name = getUserName(userNode);
-	let tagsNode = users[i].getElementsByClassName("tags")[0];
-	tagsNode.innerHTML = " ["
+	let tagsNode = userNode.getElementsByClassName("tags")[0];
+	let tagsNodeLeft = userNode.getElementsByClassName("tagsLeft")[0];
+	let tagsNodeRight = userNode.getElementsByClassName("tagsRight")[0];
+	tagsNode.innerHTML="";
+	tagsNodeLeft.innerHTML="";
+	tagsNodeRight.innerHTML="";
 	let firstTag = true;
 	let objectStore = db.transaction("utags", "readwrite").objectStore("utags");
 	objectStore.openCursor().onsuccess = function(event) {
 	    let cursor = event.target.result;
 	    if (cursor && cursor.value.user == name) {
-		let tag = cursor.value.tag;
+		let tagName = cursor.value.tag;
 		if(!firstTag) {
-		    tagsNode.innerHTML += ","+tag
+		    tagsNode.innerHTML += ","+makeUserTagNode(name,tagName);
 		} else {
-		    tagsNode.innerHTML += tag;
+		    tagsNodeLeft.innerHTML='[';
+		    tagsNode.innerHTML += makeUserTagNode(name,tagName);
+		    tagsNodeRight.innerHTML=']';
 		    firstTag=false
 		};
 		cursor.continue();
-	    } else {
-		tagsNode.innerHTML += "]"
 	    };
 	};
     };
 };
+
 
 
 //indexedDB.deleteDatabase("opennet-db");
@@ -356,7 +371,7 @@ window.onload = function() {
     };
 
     // database
-    var DBOpenRequest = indexedDB.open("opennet-db3", 1);
+    var DBOpenRequest = indexedDB.open("opennet-db4", 2);
     DBOpenRequest.onsuccess = function(e) {
 	db = DBOpenRequest.result;
 	console.log("database has been opened");
@@ -369,7 +384,7 @@ window.onload = function() {
 	console.log("msgs middle");
 	store.createIndex("ipv4", "ipv4", {unique: false});
 	console.log("msgs done")*/
-	var store = db.createObjectStore("utags", {autoIncrement: true});
+	var store = db.createObjectStore("utags", {keyPath: ["user", "tag"]});
 	store.createIndex("user", "user", {unique: false});
 	store.createIndex("tag", "tag", {unique: false});
 	console.log("utags store created")
@@ -409,20 +424,56 @@ function msgLookupIpv4(ipv4) {
 
 
 function utagsStore(data) {
-//    database.onsuccess = function() {
-	// Start a new transaction
-    //console.log("database: "+JSON.stringify(database));
-//	var db = database.result;
-    console.log("start tx");
-    var objectStore = db.transaction("utags", "readwrite").objectStore("utags");
-	console.log("try to put: "+JSON.stringify(data));
-    var request = objectStore.put(data);
-    request.onsuccess = function() {
-	console.log("stored");
+    var tx = db.transaction("utags", "readwrite")
+    //console.log("try to put: "+JSON.stringify(data));
+    var request = tx.objectStore("utags").put(data);
+    tx.oncomplete = function() {
+	displayUserTags();
     }
-//    };
 };
 unsafeWindow.utagsStore = function(data) { utagsStore(data) };
+
+function utagsDelete(user,tag) {
+    let tx = db.transaction("utags", "readwrite");
+    //console.log("try to remove: "+JSON.stringify({"user": user, "tag": tag}));
+    let request = tx.objectStore("utags").delete([user, tag]);
+    tx.oncomplete = function () {
+	displayUserTags();
+    };
+}
+unsafeWindow.utagsDelete = function(user,tag) { utagsDelete(user,tag) }
+
+function utagsStorePrompt(userName) {
+    let tagName = prompt("Новый тэг для пользователя "+userName+":","");
+    if (tagName !== null) {
+	if (tagName.length == 0) {
+	    alert("Тэг не может быть пустым!")
+	} else {
+	    utagsStore({"user":userName, "tag":tagName});
+	}
+    }
+}
+unsafeWindow.utagsStorePrompt = function(username) { utagsStorePrompt(username) };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ненужная функция - только для дебага
 function utagsGet(name) {

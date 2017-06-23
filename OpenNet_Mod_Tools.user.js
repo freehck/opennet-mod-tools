@@ -36,37 +36,15 @@
 
 console.log("load OpenNet Mod Tools");
 
-function last (lst) {
-  return lst[lst.length-1]
-}
+var currentNewsId = last(document.location.href.split("/")).match(/\d+/)[0];
+var news_id = currentNewsId; // obsolete
 
-var news_id = last(document.location.href.split("/")).match(/\d+/)[0];
 
-var utags = {};
 
-// теги
-let mod = "mod" // модераторы
-let smart = "smart" // стоит прислушаться
-let fat = "дебил" // толстые тролли
-let troll = "troll" // тонкие тролли
-let mssp = "mssp" // страх и ненависть Шигорина
 
-// люди
-utags["freehck"] = [mod]
-utags["Michael Shigorin"] = [mod]
-utags["Сергей"] = [fat]
-utags["Celcion"] = [smart]
-utags["Crazy Alex"] = [smart]
-utags["Andrey Mitrofanov"] = [smart]
 
-// расстановка тэгов
-var links = document.getElementsByTagName("a");
-for (i in links) {
-  name = links[i].text;
-  if (name in utags) {
-//      links[i].parentElement.innerHTML = "<span class='user'> <a href=\"" + links[i].href + "\">" + links[i].text + "</a> " + "[" + utags[name].toString() + "] </div>"
-   };
-};
+
+
 
 // раскраска сообщений
 
@@ -161,22 +139,23 @@ for (var i=0; i<msgs.length; i++) {
   lookup.text = "(((>o<)))";
 }
 
-/*
-if (window.localStorage) {
-    alert("localstorage exists");
-} else {
-    alert("noooooo!");
-}
-
-if (window.File && window.FileReader && window.FileList && window.Blob) {
-    alert('Great success! All the File APIs are supported.');
-} else {
-    alert('The File APIs are not fully supported in this browser.');
-}
-*/
 
 
-// ==== TOP MENU ====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ==================== TOP MENU ====================
 
 /*
   Мы крутим страничку, а элементы управления модераторскими
@@ -223,53 +202,23 @@ window.addEventListener("hashchange", function () {
 
 
 
-// === NEW CLASSES, SPANS AND IDS ===
+// ==================== DOM Normalization ====================
 
-/*
-  Приводим содержимое страницы в божеский вид, с которым хотя бы можно
-  работать. Потому что тут форматирование страницы ей-богу на уровне
-  конца девяностых.
-
-  Здесь все ссылки на пользователей заворачиваются в span с классом
-  user, создаются id некоторым важным объектам.
-*/
-
+/* DOM этой страницы является вёрсткой-атавизмом-из-девяностых.
+ * Чудом выдираем основные конструктивные элементы и снабжаем их
+ * классами, идентификаторами, дополнительными тэгами
+ */
 
 // 8я таблица -- это Оглавление
 document.body.getElementsByTagName("table")[8].id = "table-of-contents";
 // Сообщения по теме - это таблицы в первом параграфе после Содержания
 document.getElementById("table-of-contents").nextSibling.id = "messages";
 
-
-function getUserName(node) {
-    return node.getElementsByTagName("a")[0].innerHTML
-}
-
-function makeUserNode(username) {
-    //console.log("Name:"+name);
-    let r = 
-        "<span class='user'>"
-	  + "<b><a href='/~"+username+"'>"+username+"</a></b> "
-	  + "<b><span class='tagsLeft'></span><span class='tags'></span><span class='tagsRight'></span></b> "
-	  + "<span class='actions'>"
-          + " -- "
-            + "<a onclick=\"utagsStorePrompt('"+username+"')\">[add tag]</a> "
-          + " -- "
-          +"</span>"
-	+ "</span>";
-    return r;
-}
-
-function makeUserTagNode(userName,tagName) {
-    let r = tagName + "<a onclick=\"utagsDelete('"+userName+"','"+tagName+"')\">(x)</a>";
-    return r
-}
-
 // каждая 2я ссылка в table-of-contents -- на пользователя
 let lis = document.getElementById("table-of-contents").getElementsByTagName("li");
 for (let i=0; i<lis.length; i++) {
     let user = lis[i].getElementsByTagName("a")[1];
-    user.parentNode.outerHTML = makeUserNode(user.innerHTML)
+    //user.parentNode.outerHTML = makeUserNode(user.innerHTML)
 };
 
 // первые 2 таблицы - заполнитель и верхнее управление
@@ -278,20 +227,15 @@ var msgs = document.getElementById("messages").getElementsByTagName("table");
 for (let i=2; i<msgs.length-1; i++) {
     msgs[i].className = "msg";
     // отступы сообщений в тредах делаются добавлением строки одной ячейкой фиксированной ширины и rowspan=5
-    // короче, надо брать третью ячкейку С КОНЦА!
+    // короче, надо брать третью строку С КОНЦА!
     let row_index = msgs[i].tBodies[0].rows.length - 3; 
-    let user = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
-    user.parentNode.outerHTML = makeUserNode(user.innerHTML)
+    let userNode = msgs[i].tBodies[0].rows[row_index].cells[0].getElementsByTagName("a")[0];
+    let userName = userNode.innerHTML;
+    let msgId = msgs[i].tBodies[0].rows[row_index-1].cells[0].getElementsByTagName("a")[0].getAttribute("name");
+    userNode.parentNode.outerHTML = makeUserNode(userName, msgId)
 }
 
-
-
-// === Decorations ===
-
-
-
 /* всегда хотел заменить ссылку [Сообщить модератору] на [Удалить] */
-
 var links = document.getElementsByTagName("a");
 for (let i=0; i<links.length; i++) {
     // буква С - английская!
@@ -299,34 +243,92 @@ for (let i=0; i<links.length; i++) {
 	links[i].innerHTML = "<b>Удалить</b>";
     }
 };
-   
 
+/* Итого:
+ * - содержание имеет id "table-of-contents"
+ * - блок с сообщениями имеет id "messages"
+ * - все сообщения имеют class "msg"
+ * - все имена пользователей завёрнуты в span с class "user"
+ */
 
+// ==================== User Node ====================
 
-// === LOCAL STORAGE ===
-console.log("db");
+// генерирует ноду, которая замещает ссылки на имена пользователей
+function makeUserNode(userName, msgId) {
+    if (msgId === undefined || msgId === null) { msgId = 12 };
+    let r = 
+        "<span class='user'>"
+	  + "<font style='display:none' class='msgid'>"+msgId+"</font>"
+	  + "<b><a class='username' href='/~"+userName+"'>"+userName+"</a></b> "
+	  + "<b><span class='tagsLeft'></span><span class='tags'></span><span class='tagsRight'></span></b> "
+	  + "<span class='actions'>"
+          + " -- "
+            + "<b><a onclick=\"utagsStorePrompt('"+userName+"')\">[+]</a></b> "
+          + " -- "
+            + "<b><a onclick=\"makeShowIpRequest('"+msgId+"')\">(((>o<)))</a></b>" // for (((>o<)))
+          +"</span>"
+	+ "</span>";
+    return r;
+}
 
-/* msgs record:
-{ "news-id": 104047,
-  "msg-id": 73,
-  "user": "freehck",
-  "ipv4": "1.2.3.4"}
-*/
+// Выдирает из неё имя пользователя
+function getUserName(node) {
+    return node.getElementsByClassName("username")[0].innerHTML
+}
 
-/* utags record:
-{ "user": "freehck",
-  "tag": "moderator" }
-*/
+// генерирует ноду с тегом для текущего пользователя
+// эта нода вставляется в пользовательскую ноду
+function makeUserTagNode(userName,tagName) {
+    let r = tagName + "<a onclick=\"utagsDelete('"+userName+"','"+tagName+"')\">(x)</a>";
+    return r
+}
 
+// ==================== Databases ====================
+/*
+ * Давайте сразу на чистоту: я не разобрался как сделать два
+ * objectStore в одной базе, сделать две базы оказалось проще. Если
+ * кого-то это волнует, сами допиливайте.
+ */
 
 // This works on all devices/browsers, and uses IndexedDBShim as a final fallback 
-var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
+var indexedDB =
+    window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB
+    || window.msIndexedDB || window.shimIndexedDB;
 
 if (!indexedDB) {
     window.alert("Ваш браузер не поддерживает IndexedDB. Можете забыть об Opennet Mod Tools");
 };
 
-var db;
+// ==================== User Tags ====================
+
+var utagsDBName = "opennet-utags";
+var utagsDB;
+var utagsDBOpenRequest = indexedDB.open(utagsDBName);
+    
+utagsDBOpenRequest.onsuccess = function(e) {
+    utagsDB = utagsDBOpenRequest.result;
+    console.log("UTAGS database has been opened");
+    displayUserTags();
+};
+
+utagsDBOpenRequest.onupgradeneeded = function(event) {
+    utagsDB = event.target.result;
+    let store = utagsDB.createObjectStore("utags", {keyPath: ["user", "tag"]});
+    store.createIndex("user", "user", {unique: false});
+    store.createIndex("tag", "tag", {unique: false});
+    console.log("UTAGS store created")
+};
+
+utagsDBOpenRequest.onerror = function (event) {
+    console.log("UTAGS database error: " + event.result.errorCode);
+};
+
+/* utags record:
+ * {
+ *   "user": "freehck",
+ *   "tag": "moderator"
+ * }
+ */
 
 function displayUserTags() {
     console.log("display user tags");
@@ -341,7 +343,7 @@ function displayUserTags() {
 	tagsNodeLeft.innerHTML="";
 	tagsNodeRight.innerHTML="";
 	let firstTag = true;
-	let objectStore = db.transaction("utags", "readwrite").objectStore("utags");
+	let objectStore = utagsDB.transaction("utags", "readwrite").objectStore("utags");
 	objectStore.openCursor().onsuccess = function(event) {
 	    let cursor = event.target.result;
 	    if (cursor && cursor.value.user == name) {
@@ -360,40 +362,81 @@ function displayUserTags() {
     };
 };
 
+function utagsStore(data) {
+    var tx = utagsDB.transaction("utags", "readwrite")
+    //console.log("try to put: "+JSON.stringify(data));
+    var request = tx.objectStore("utags").put(data);
+    tx.oncomplete = function() {
+	displayUserTags();
+    }
+};
+unsafeWindow.utagsStore = function(data) { utagsStore(data) };
 
-
-//indexedDB.deleteDatabase("opennet-db");
-
-window.onload = function() {
-    //jump higher than anchors if we load page on anchor
-    if (window.location.href.indexOf('#') > -1) {
-	window.scrollTo(window.scrollX, window.scrollY-1);
-    };
-
-    // database
-    var DBOpenRequest = indexedDB.open("opennet-db4", 2);
-    DBOpenRequest.onsuccess = function(e) {
-	db = DBOpenRequest.result;
-	console.log("database has been opened");
+function utagsDelete(user,tag) {
+    let tx = utagsDB.transaction("utags", "readwrite");
+    //console.log("try to remove: "+JSON.stringify({"user": user, "tag": tag}));
+    let request = tx.objectStore("utags").delete([user, tag]);
+    tx.oncomplete = function () {
 	displayUserTags();
     };
+}
+unsafeWindow.utagsDelete = function(user,tag) { utagsDelete(user,tag) }
 
-    DBOpenRequest.onupgradeneeded = function(event) {
-	db = event.target.result;
-	/*store = db.createObjectStore("msgs", {keyPath: ["news-id", "msg-id"]});
-	console.log("msgs middle");
-	store.createIndex("ipv4", "ipv4", {unique: false});
-	console.log("msgs done")*/
-	var store = db.createObjectStore("utags", {keyPath: ["user", "tag"]});
-	store.createIndex("user", "user", {unique: false});
-	store.createIndex("tag", "tag", {unique: false});
-	console.log("utags store created")
+function utagsStorePrompt(userName) {
+    let tagName = prompt("Новый тэг для пользователя "+userName+":","");
+    if (tagName !== null) {
+	if (tagName.length == 0) {
+	    alert("Тэг не может быть пустым!")
+	} else {
+	    utagsStore({"user":userName, "tag":tagName});
+	}
     }
+}
+unsafeWindow.utagsStorePrompt = function(username) { utagsStorePrompt(username) };
 
-    DBOpenRequest.onerror = function (event) {
-	console.log("Database error: " + event.result.errorCode);
-    };
+// ==================== Message DB ====================
+
+var msgsDBName = "opennet--test1"
+var msgsDB;
+var msgsDBOpenRequest = indexedDB.open(msgsDBName);
+    
+msgsDBOpenRequest.onsuccess = function(e) {
+    msgsDB = msgsDBOpenRequest.result;
+    console.log("MSGS database has been opened");
 };
+
+msgsDBOpenRequest.onupgradeneeded = function(event) {
+    msgsDB = event.target.result;
+    let store = msgsDB.createObjectStore("msgs", {keyPath: ["newsId", "msgId"]});
+    store.createIndex("newsId", "newsId", {unique: false});
+    store.createIndex("msgId", "msgId", {unique: false});
+    store.createIndex("user", "user", {unique: false});
+    store.createIndex("ipv4", "ipv4", {unique: false});
+    console.log("MSGS store created")
+};
+
+msgsDBOpenRequest.onerror = function (event) {
+    console.log("MSGS database error: " + event.result.errorCode);
+};
+
+/* msgs record:
+ * {
+ *   "newsId": 104047,
+ *   "msgId": 73,
+ *   "user": "freehck",
+ *   "ipv4": "1.2.3.4"
+ * }
+ */
+
+function makeMsgRecord(newsId, msgId, userName, ipv4) {
+    return {"newsId": newsId, "msgId": msgId, "user": userName, "ipv4": ipv4}
+}
+
+function msgStore(data) {
+    let tx = msgsDB.transaction("msgs", "readwrite");
+    tx.objectStore("msgs").put(data);
+    tx.oncomplete = function() { console.log("msg stored: "+JSON.stringify(data)) };
+}
 
 /*function msgStore(data) {
     database.onsuccess = function() {
@@ -421,71 +464,34 @@ function msgLookupIpv4(ipv4) {
 }
 */
 
+// ==================== SHOW IP API ====================
 
-
-function utagsStore(data) {
-    var tx = db.transaction("utags", "readwrite")
-    //console.log("try to put: "+JSON.stringify(data));
-    var request = tx.objectStore("utags").put(data);
-    tx.oncomplete = function() {
-	displayUserTags();
-    }
+function makeShowIpUrl(msgId) {
+    return ("https://www.opennet.ru/cgi-bin/openforum/a/show_ip.cgi?forum=vsluhforumID3&om="+currentNewsId+"&omm="+msgId);
 };
-unsafeWindow.utagsStore = function(data) { utagsStore(data) };
 
-function utagsDelete(user,tag) {
-    let tx = db.transaction("utags", "readwrite");
-    //console.log("try to remove: "+JSON.stringify({"user": user, "tag": tag}));
-    let request = tx.objectStore("utags").delete([user, tag]);
-    tx.oncomplete = function () {
-	displayUserTags();
-    };
-}
-unsafeWindow.utagsDelete = function(user,tag) { utagsDelete(user,tag) }
+function makeShowIpRequest(msgId) {
+    var req = new XMLHttpRequest();
+    req.addEventListener("load", storeShowIpResponse);
+    req.open("GET", makeShowIpUrl(msgId));
+    req.withCredentials = true;
+    req.responseType = "document";
+    req.send()
+};
+unsafeWindow.makeShowIpRequest = function(msgId) { makeShowIpRequest(msgId) };
 
-function utagsStorePrompt(userName) {
-    let tagName = prompt("Новый тэг для пользователя "+userName+":","");
-    if (tagName !== null) {
-	if (tagName.length == 0) {
-	    alert("Тэг не может быть пустым!")
-	} else {
-	    utagsStore({"user":userName, "tag":tagName});
-	}
-    }
-}
-unsafeWindow.utagsStorePrompt = function(username) { utagsStorePrompt(username) };
+function storeShowIpResponse() {
+    let content = this.responseXML;
+    let links = content.getElementsByTagName("a");
+    let data = [];
+    for (let i=0; i<links.length; i++) {
+	let link = links[i];
+	//console.log("source: "+link.outerHTML);
+	let [newsId, msgId] = last(link.href.split("/")).match(/\d+/g);
+	let [userName, ipv4] = link.innerHTML.split("  ");
+	//console.log("data: "+newsId+" "+msgId+" "+userName+" "+ipv4);
+	msgStore(makeMsgRecord(newsId,msgId,userName,ipv4));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ненужная функция - только для дебага
-function utagsGet(name) {
-    let objectStore = db.transaction("utags", "readwrite").objectStore("utags");
-    objectStore.openCursor().onsuccess = function(event) {
-	let cursor = event.target.result;
-	if (cursor) {
-	    let tag = cursor.value.tag;
-	    console.log("tag: "+tag);
-	} else {
-	    console.log("no tag!");
-	}
     }
 }
 
@@ -493,71 +499,31 @@ function utagsGet(name) {
 
 
 
+// ==================== Onload ====================
 
 
 
-unsafeWindow.utagsGet = function(name) {
-    var r = utagsGet(name);
-/*    console.log(r.join(','));
-    console.log(r[0]);
-    console.log(r.length);
-    console.log("GET: "+r.join(','));*/
-    return r
+
+window.onload = function() {
+    console.log("onload mod-tools");
+
+    //jump higher than anchors if we load page on anchor (top menu)
+    if (window.location.href.indexOf('#') > -1) {
+	window.scrollTo(window.scrollX, window.scrollY-1);
+    };
+
+
+
+
+
+};
+
+
+
+
+
+// ==================== useful functions ====================
+
+function last (lst) {
+  return lst[lst.length-1]
 }
-
-/*
-function utagsLookupUser(user) {
-    let result;
-    database.onsuccess = function() {
-	var db = database.result;
-	var tx = db.transaction("utags", "readwrite");
-	var store = tx.objectStore("utags");
-	var index = store.index("user");
-	var getUser = index.get("user",user);
-	getUser.onsuccess = function() {
-	    console.log("result: "+getUser.result);
-	    result = getUser.result;
-	};
-    };
-    return result
-}
-*/
-
-//utagsStore({ user: "freehck", tag: "moderator" });
-//utagsStore({ user: "Michael Shigorin", tag: "moderator" });
- 
-
-//utagsLookupUser("freehck");
-  
-/*
-    // Add some data
-    store.put({id: 12345, name: {first: "John", last: "Doe"}, age: 42});
-    store.put({id: 67890, name: {first: "Bob", last: "Smith"}, age: 35});
-    
-    // Query the data
-    var getJohn = store.get(12345);
-    var getBob = index.get(["Smith", "Bob"]);
-
-    getJohn.onsuccess = function() {
-        console.log(getJohn.result.name.first);  // => "John"
-    };
-
-    getBob.onsuccess = function() {
-        console.log(getBob.result.name.first);   // => "Bob"
-    };
-
-    // Close the db when the transaction is done
-    tx.oncomplete = function() {
-        db.close();
-    };
-}
-*/
-
-
-
-
-
-
-
-console.log("DONE");
-

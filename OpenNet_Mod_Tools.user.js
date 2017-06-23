@@ -225,11 +225,11 @@ for (let i=0; i<lis.length; i++) {
 // последняя таблица - тоже управление
 var msgs = document.getElementById("messages").getElementsByTagName("table");
 for (let i=2; i<msgs.length-1; i++) {
-    msgs[i].className = "msg";
     // отступы сообщений в тредах делаются добавлением строки одной ячейкой фиксированной ширины и rowspan=5
     // короче, надо брать третью строку С КОНЦА!
     let tableRowsNum = msgs[i].tBodies[0].rows.length;
     if (tableRowsNum == 4 || tableRowsNum == 5) {
+	msgs[i].className = "msg";
 	let userNode = msgs[i].tBodies[0].rows[tableRowsNum-3].cells[0].getElementsByTagName("a")[0];
 	let userName = userNode.innerHTML;
 	let msgId = msgs[i].tBodies[0].rows[tableRowsNum-4].cells[0].getElementsByTagName("a")[0].getAttribute("name");

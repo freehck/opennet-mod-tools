@@ -171,21 +171,23 @@ stalker.style.top = "0px";
 stalker.style.left = "0px";
 stalker.style.width = "100%";
 stalker.style.padding = 0;
-stalker.style.border = 1;
+stalker.style.border = "1px solid #000";
 
 var menu = document.createElement("table");
 menu.align = "center";
 menu.width = "80%";
-menu.border = 1;
+menu.border = 0;
 menu.style.textAlign = "center";
 menu.style.tableLayout = "fixed";
 menu.insertRow();
 
-menu.rows[0].insertCell();
-menu.rows[0].cells[0].innerHTML = "<b><a onclick='utagsList()'>Список тегов</a></b>";
+let menuCells = menu.rows[0];
 
-menu.rows[0].insertCell();
-menu.rows[0].cells[1].innerHTML = "<b>My name's Jobe</b>";
+menuCells.insertCell();
+menuCells.cells[0].innerHTML = "<b><a onclick='utagsList()'>Список тегов</a></b>";
+
+menuCells.insertCell();
+menuCells.cells[1].innerHTML = "<b><a onclick='displayUserTags()'>Обновить теги</a></b>";
 
 stalker.appendChild(menu);
 document.body.appendChild(stalker);
@@ -200,7 +202,31 @@ window.addEventListener("hashchange", function () {
 });
 
 
+var floater = document.createElement("div");
+floater.className = "floater";
+floater.id = "floater";
+floater.style.width = "30%";
+floater.style.position = "fixed";
+floater.style.top = "5%";
+floater.style.left = "35%";
+floater.style.backgroundColor = "white";
+floater.style.border = "1px solid #000";
+floater.style.visibility = "hidden";
+//floater.innerHTML = "Абыр!";
 
+document.body.appendChild(floater);
+
+function displayFloater() {
+    floater.style.visibility = "visible"
+}
+
+function hideFloater() {
+    floater.style.visibility = "hidden"
+}
+unsafeWindow.hideFloater = function () { hideFloater() };
+function makeFloaterDisabler(text) {
+    return ("<a onclick='hideFloater()'>"+text+"</a>");
+}
 
 // ==================== DOM Normalization ====================
 
@@ -366,6 +392,7 @@ function displayUserTags() {
 	};
     };
 };
+unsafeWindow.displayUserTags = function() { displayUserTags() };
 
 function utagsStore(data) {
     var tx = utagsDB.transaction("utags", "readwrite")
@@ -401,15 +428,25 @@ unsafeWindow.utagsStorePrompt = function(username) { utagsStorePrompt(username) 
 
 function utagsList() {
     let objectStore = utagsDB.transaction("utags", "readwrite").objectStore("utags");
+    // очищаем содержимое всплывающего окна
+    document.getElementById("floater").innerHTML = "";
+    // создаём его новые внутренности
+    let utagsTable = document.createElement("table");
+    utagsTable.width = "100%";
+    let utagsTitle = document.createElement("tr");
+    utagsTitle.innerHTML = "<td colspan=2><center><b>Список тегов "
+	                    +makeFloaterDisabler("(закрыть)")+"</b></center></d>";
+    utagsTable.appendChild(utagsTitle);
+
     objectStore.openCursor().onsuccess = function(event) {
 	let cursor = event.target.result;
 	if (cursor) {
-	    console.log("utags entry: "+JSON.stringify(cursor.value));
-	    console.log("utags entry: "+cursor.value.user);
-	    console.log("----");
-	    
+	    let row = document.createElement("tr");
+	    row.innerHTML = "<td>"+cursor.value.user+"</td><td>"+cursor.value.tag+"</td>";
+	    utagsTable.appendChild(row);
 	} else {
-	    console.log("utags listed");
+	    document.getElementById("floater").appendChild(utagsTable);
+	    displayFloater();
 	};
 	cursor.continue();
     };

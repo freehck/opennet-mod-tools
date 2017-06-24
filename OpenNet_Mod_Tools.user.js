@@ -182,7 +182,7 @@ menu.style.tableLayout = "fixed";
 menu.insertRow();
 
 menu.rows[0].insertCell();
-menu.rows[0].cells[0].innerHTML = "<b>Peter Peter Pumpkin Eater!</b>";
+menu.rows[0].cells[0].innerHTML = "<b><a onclick='utagsList()'>Список тегов</a></b>";
 
 menu.rows[0].insertCell();
 menu.rows[0].cells[1].innerHTML = "<b>My name's Jobe</b>";
@@ -341,10 +341,10 @@ function displayUserTags() {
 	let tagsNode = userNode.getElementsByClassName("tags")[0];
 	let tagsNodeLeft = userNode.getElementsByClassName("tagsLeft")[0];
 	let tagsNodeRight = userNode.getElementsByClassName("tagsRight")[0];
+	let firstTag = true;
 	tagsNode.innerHTML="";
 	tagsNodeLeft.innerHTML="";
 	tagsNodeRight.innerHTML="";
-	let firstTag = true;
 	let objectStore = utagsDB.transaction("utags", "readwrite").objectStore("utags");
 	objectStore.openCursor().onsuccess = function(event) {
 	    let cursor = event.target.result;
@@ -358,6 +358,9 @@ function displayUserTags() {
 		    tagsNodeRight.innerHTML=']';
 		    firstTag=false
 		};
+
+	    };
+	    if (cursor) {
 		cursor.continue();
 	    };
 	};
@@ -395,6 +398,23 @@ function utagsStorePrompt(userName) {
     }
 }
 unsafeWindow.utagsStorePrompt = function(username) { utagsStorePrompt(username) };
+
+function utagsList() {
+    let objectStore = utagsDB.transaction("utags", "readwrite").objectStore("utags");
+    objectStore.openCursor().onsuccess = function(event) {
+	let cursor = event.target.result;
+	if (cursor) {
+	    console.log("utags entry: "+JSON.stringify(cursor.value));
+	    console.log("utags entry: "+cursor.value.user);
+	    console.log("----");
+	    
+	} else {
+	    console.log("utags listed");
+	};
+	cursor.continue();
+    };
+};
+unsafeWindow.utagsList = function() { utagsList() };
 
 // ==================== Message DB ====================
 

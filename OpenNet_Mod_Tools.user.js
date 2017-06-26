@@ -3,6 +3,7 @@
 // @namespace   opennet-mod-tools
 // @description Extend interface functionality for OpenNet moderators
 // @include     https://www.opennet.ru/openforum/vsluhforumID3/*
+// @include     http://www.opennet.ru/openforum/vsluhforumID3/*
 // @version     0.2
 // @grant       none
 // ==/UserScript==
@@ -38,6 +39,12 @@
 // https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=94.142.141.14&port=443
 
 console.log("load OpenNet Mod Tools");
+
+// http -> https redirection
+if (location.protocol != 'https:') {
+    location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+}
+
 
 var currentNewsId = last(document.location.href.split("/")).match(/\d+/)[0];
 var news_id = currentNewsId; // obsolete

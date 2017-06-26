@@ -7,24 +7,27 @@
 // @grant       none
 // ==/UserScript==
 
-/* Данный userscript создан для облегчения задачи модерирования проекта opennet
- * Я не вебник, так что нахакал как сумел
+/* Данный userscript создан для облегчения задачи модерирования
+ * проекта opennet. Я не вебник, так что нахакал как сумел. Не
+ * нравится - допиливайте сами.
+ *
  * Функциональность состоит из двух частей:
  * 1) Расстановки тегов
  * 2) Отслеживанием сообщений по ip
  *
- * Теги расставляются при помощи праввки исходного кода скрипта, пример показан ниже.
- * Отслеживание по ip производится при нажатии на кнопку (((>o<))), которая есть у каждого сообщения.
- * При этом сообщения в новости, сделанные с одного ip-адреса окрашиваются в розовый цвет.
- * Также при отслеживании полезно открыть js-консоль (Shift+Ctrl+J):
- * При отслеживании туда выводится информация об количестве сообщений пользователя и ссылки на все найденные его сообщения.
- *
- * Надо иметь в виду, что реально помеченных сообщений может быть меньше найденных.
- * Это связано с тем, что какие-то сообщения могут быть либо удалены, либо одно из них
- * собственно сама новость и есть.
+ * Все данные сохраняются в локальной базе данных, связанной с доменом
+ * www.opennet.ru. Объём её не ограничен, но насколько мне известно,
+ * при превышении некоторых дефолтов браузер должен запросить
+ * подтверждение на превышение.
  * 
- * Также, поскольку отслеживание ведётся путём грепанья лога, в темах недельной давности отслеживание работать не будет.
-*/
+ * В верхней части экрана расположено меню, через которое можно всем
+ * этим добром управлять. Когда Вы добавляете/удаляете тег у
+ * пользователя, все теги на данной странице будут обновлены. Но не на
+ * других страницах. Если Вы работаете в нескольких вкладках, и
+ * изменили теги на одной из них, то чтобы изменения вступили в силу,
+ * надо нажать на другой вкладке кнопку "обновить теги".
+ *
+ */
 
 
 // определение news_id:
@@ -38,9 +41,7 @@ console.log("load OpenNet Mod Tools");
 
 var currentNewsId = last(document.location.href.split("/")).match(/\d+/)[0];
 var news_id = currentNewsId; // obsolete
-
-
-
+const noIp = "xxx.xxx.xxx.xxx"
 
 
 
@@ -260,6 +261,7 @@ for (let i=2; i<msgs.length-1; i++) {
 	let userName = userNode.innerHTML;
 	let msgId = msgs[i].tBodies[0].rows[tableRowsNum-4].cells[0].getElementsByTagName("a")[0].getAttribute("name");
 	userNode.parentNode.outerHTML = makeUserNode(userName, msgId);
+	//msgs[i].tBodies[0].rows[tableRowsNum-2].cells[0].id = genMsgIdAttr(msgId);
     };
 }
 
@@ -283,17 +285,21 @@ for (let i=0; i<links.length; i++) {
 
 // генерирует ноду, которая замещает ссылки на имена пользователей
 function makeUserNode(userName, msgId) {
-    if (msgId === undefined || msgId === null) { msgId = 12 };
+    //if (msgId === undefined || msgId === null) { msgId = 12 };
     let r = 
         "<span class='user'>"
 	  + "<font style='display:none' class='msgid'>"+msgId+"</font>"
 	  + "<b><a class='username' href='/~"+userName+"'>"+userName+"</a></b> "
-	  + "<b><span class='tagsLeft'></span><span class='tags'></span><span class='tagsRight'></span></b> "
+          + "(<span class='ipv4'>"+noIp+"</span>) "
+	  + "<span class='tagsLeft'></span><span class='tags'></span><span class='tagsRight'></span> "
 	  + "<span class='actions'>"
           + " -- "
             + "<b><a onclick=\"utagsStorePrompt('"+userName+"')\">[+]</a></b> "
           + " -- "
-            + "<b><a onclick=\"makeShowIpRequest('"+msgId+"')\">(((>o<)))</a></b>" // for (((>o<)))
+            + "<b><a onclick=\"makeShowIpRequest('"+msgId+"')\">(((>o<)))</a></b>"
+          + " -- "
+            + "<b><a onclick=\"colorMessage('"+msgId+"', 'pink')\">mark</a></b>"
+    
           +"</span>"
 	+ "</span>";
     return r;
@@ -307,9 +313,40 @@ function getUserName(node) {
 // генерирует ноду с тегом для текущего пользователя
 // эта нода вставляется в пользовательскую ноду
 function makeUserTagNode(userName,tagName) {
-    let r = tagName + "<a onclick=\"utagsDelete('"+userName+"','"+tagName+"')\">(x)</a>";
+    let r = "<b>" + tagName + "</b>" + "<a onclick=\"utagsDelete('"+userName+"','"+tagName+"')\"><font size='1px'>(x)</font></a>";
     return r
 }
+
+// ==================== Message Node ====================
+
+function messageGetId(msgNode) {
+    return msgNode.getElementsByClassName("msgid")[0].innerHTML;
+}
+
+function messageGetIp(msgNode) {
+    return msgNode.getElementsByClassName("ipv4")[0].innerHTML;
+}
+
+function messageGetUser(msgNode) {
+    return msgNode.getElementsByClassName("username")[0].innerHTML;
+}
+
+function messageGetTextNode(msgNode) {
+    let tableRowsNum = msgNode.tBodies[0].rows.length;
+    return msgNode.tBodies.rows[tableRowsNum-1].cells[0];
+}
+
+function colorNode(node, color) {
+    node.style.backgroundColor = color;
+}
+
+function genMsgIdAttr(msgId) { return ("msg"+msgId) }
+
+function colorMessage(msgId, color) {
+    let node = document.getElementById(genMsgIdAttr(msgId));
+    colorNode(node,color);
+}
+unsafeWindow.colorMessage = function(msgId, color) { colorMessage(msgId, color) }
 
 // ==================== Databases ====================
 /*
@@ -462,6 +499,7 @@ var msgsDBOpenRequest = indexedDB.open(msgsDBName);
 msgsDBOpenRequest.onsuccess = function(e) {
     msgsDB = msgsDBOpenRequest.result;
     console.log("MSGS database has been opened");
+    displayMsgIps();
 };
 
 msgsDBOpenRequest.onupgradeneeded = function(event) {
@@ -495,6 +533,37 @@ function msgStore(data) {
     let tx = msgsDB.transaction("msgs", "readwrite");
     tx.objectStore("msgs").put(data);
     tx.oncomplete = function() { console.log("msg stored: "+JSON.stringify(data)) };
+}
+
+// начинаем определять адреса для всех сообщений
+
+var unknownIds = [];
+
+function displayMsgIps() {
+    console.log("display message ip addrs");
+    let msgs = document.getElementsByClassName("msg");
+    for (let i=0; i<msgs.length; i++) {
+	displayOneMsgIp(msgs[i]);
+    }
+}
+
+function displayOneMsgIp(msgNode) {
+    let msgIp = messageGetIp(msgNode);
+    if (msgIp == noIp) {
+	let msgId = messageGetId(msgNode);
+	let msgIpNode = msgNode.getElementsByClassName("ipv4")[0];
+	let objectStore = msgsDB.transaction("msgs", "readwrite").objectStore("msgs");
+	let request = objectStore.get([currentNewsId, msgId]);
+	request.onsuccess = function(event) {
+	    let msg = event.target.result;
+	    if (msg === undefined) {
+		unknownIds.push(msgId);
+		console.log("unknown ids: "+JSON.stringify(unknownIds));
+	    } else {
+		msgIpNode.innerHTML = msg.ipv4;
+	    }
+	}
+    }
 }
 
 /*function msgStore(data) {

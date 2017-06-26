@@ -532,7 +532,8 @@ function makeMsgRecord(newsId, msgId, userName, ipv4) {
 function msgStore(data) {
     let tx = msgsDB.transaction("msgs", "readwrite");
     tx.objectStore("msgs").put(data);
-    tx.oncomplete = function() { console.log("msg stored: "+JSON.stringify(data)) };
+    tx.oncomplete = function() {
+	console.log("msg stored: "+JSON.stringify(data)) };
 }
 
 // начинаем определять адреса для всех сообщений
@@ -558,39 +559,13 @@ function displayOneMsgIp(msgNode) {
 	    let msg = event.target.result;
 	    if (msg === undefined) {
 		unknownIds.push(msgId);
-		console.log("unknown ids: "+JSON.stringify(unknownIds));
+		//console.log("unknown ids: "+JSON.stringify(unknownIds));
 	    } else {
 		msgIpNode.innerHTML = msg.ipv4;
 	    }
 	}
     }
 }
-
-/*function msgStore(data) {
-    database.onsuccess = function() {
-	// Start a new transaction
-	var db = database.result;
-	var tx = db.transaction("msgs", "readwrite");
-	var store = tx.objectStore("msgs");
-	store.put(data);
-    };
-};
-
-function msgLookupId(news_id, msg_id) {
-    var db = database.result;
-    var tx = db.transaction("msgs", "readwrite");
-    var store = tx.objectStore("msgs");
-    return store.get({news_id, msg_id});
-}
-
-function msgLookupIpv4(ipv4) {
-    var db = database.result;
-    var tx = db.transaction("msgs", "readwrite");
-    var store = tx.objectStore("msgs");
-    var index = store.index("ipv4");
-    return index.get("ipv4",ipv4);
-}
-*/
 
 // ==================== SHOW IP API ====================
 
@@ -618,14 +593,31 @@ function storeShowIpResponse() {
 	let [newsId, msgId] = last(link.href.split("/")).match(/\d+/g);
 	let [userName, ipv4] = link.innerHTML.split("  ");
 	//console.log("data: "+newsId+" "+msgId+" "+userName+" "+ipv4);
+	//console.log("remove msgId from unknown: "+msgId);
+	unknownIds = unknownIds.filter(function(unknownId) {
+	    return (unknownId != msgId);
+	});
+	//console.log("done, "+unknownIds.length+" ids left to check");
 	msgStore(makeMsgRecord(newsId,msgId,userName,ipv4));
-
     }
 }
 
+// TODO: раскомментировать этот таймер, после того, как стану пойму, что делать со старыми темами, где адреса никогда не зарезолвятся
+//let showIpTimer = window.setInterval(syncMsgIpAndDisplay, 1000);
 
-
-
+function syncMsgIpAndDisplay() {
+    displayMsgIps();
+    //console.log("unknownIds: "+JSON.stringify(unknownIds));
+    if (unknownIds.length > 0) {
+	let msgId = unknownIds.shift();
+	if (msgId != undefined) {
+	    makeShowIpRequest(msgId);
+	}
+    } else {
+	//console.log("clearTimeout");
+	window.clearTimeout(showIpTimer);
+    }
+}
 
 // ==================== Onload ====================
 
